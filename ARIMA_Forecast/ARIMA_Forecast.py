@@ -23,7 +23,7 @@ print("\n")
 print(pd.DataFrame(final_df))
 
 print("\n")
-print(pd.DataFrame(inputTable).head(200))# .sort_values(by=['Регион продаж', 'Продукция', 'Дата продажи']))
+print(pd.DataFrame(inputTable))
 
 grouped = final_df.groupby(['Регион продаж', 'Продукция'])
 print("\n")
@@ -33,10 +33,15 @@ outputlist = []
 groupCounter = 0
 
 for (region, product), group in grouped:
+    print(group)
     forecast_dataframe = group[['Дата продажи','Кол-во продаж']].copy()
     forecast_dataframe['Дата продажи'] = pd.to_datetime(forecast_dataframe['Дата продажи'])
     forecast_dataframe.set_index('Дата продажи', inplace = True)
     model = sm.tsa.arima.ARIMA(forecast_dataframe['Кол-во продаж'])
+    print("\n")
+    print("Forecasted value:")
+    print(model.fit().forecast(steps = 1))
+    print("\n")
     outputlist.append(model.fit().forecast(steps = 1))
     groupCounter += 1
 
