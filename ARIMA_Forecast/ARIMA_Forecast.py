@@ -5,8 +5,9 @@ import statsmodels.api as sm
 from statsmodels.tsa.vector_ar.vecm import forecast
 # from statsmodels.tsa.arima.model import ARIMA
 
-# inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
-inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src_edited.xlsx')
+inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
+# inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src_edited.xlsx')
+inputTable.drop(inputTable.columns[len(inputTable.columns)-1], axis = 1, inplace = True)
 inputTable.drop(inputTable.columns[len(inputTable.columns)-1], axis = 1, inplace = True)
 print(inputTable)
 
@@ -32,7 +33,7 @@ print(pd.DataFrame(grouped))
 # outputlist = []
 # groupcounter = 0
 
-# for (region, product), group in grouped:
+# for (region, product), group in grouped:k
 #     print(group)
 #     forecast_dataframe = group[['Дата продажи','Кол-во продаж']].copy()
 #     forecast_dataframe['Дата продажи'] = pd.to_datetime(forecast_dataframe['Дата продажи'])
@@ -61,7 +62,7 @@ for (region, product), group in grouped:
     # outputlist.append(str(model.fit().forecast(steps = 1)).split(" "))
     outputlist.loc[groupCounter] = [str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', '')]
 
-print(outputlist)
+outputlist.to_excel("output.xlsx")
 # fix this ---------------
     # issue is in getting unique forecasted values to see if there are duplicates, because now amount of forecasted values and
     # amount of real values doesnt match
