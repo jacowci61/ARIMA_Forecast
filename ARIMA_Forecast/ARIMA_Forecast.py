@@ -29,22 +29,44 @@ grouped = final_df.groupby(['Регион продаж', 'Продукция'])
 print("\n")
 print(pd.DataFrame(grouped))
 
-outputlist = []
-groupCounter = 0
+# outputlist = []
+# groupcounter = 0
+
+# for (region, product), group in grouped:
+#     print(group)
+#     forecast_dataframe = group[['Дата продажи','Кол-во продаж']].copy()
+#     forecast_dataframe['Дата продажи'] = pd.to_datetime(forecast_dataframe['Дата продажи'])
+#     forecast_dataframe.set_index('Дата продажи', inplace = True)
+#     model = sm.tsa.arima.ARIMA(forecast_dataframe['Кол-во продаж'])
+#     print("\n")
+#     print("Region: ")
+#     print(region)
+#     print("\n")
+#     print("Product ID: ")
+#     print(product)
+#     print("Forecasted value: ")
+#     print(str(model.fit().forecast(steps = 1)).split(" "))
+#     # print(model.fit().forecast(steps = 1))
+#     outputlist.append(str(model.fit().forecast(steps = 1)).split(" ")) # need to use dataframe here w/ 3 columns
+
+outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата продажи', 'Кол-во продаж'])
+groupCounter = -1
 
 for (region, product), group in grouped:
-    print(group)
+    groupCounter += 1
     forecast_dataframe = group[['Дата продажи','Кол-во продаж']].copy()
     forecast_dataframe['Дата продажи'] = pd.to_datetime(forecast_dataframe['Дата продажи'])
     forecast_dataframe.set_index('Дата продажи', inplace = True)
     model = sm.tsa.arima.ARIMA(forecast_dataframe['Кол-во продаж'])
-    print("\n")
-    print("Forecasted value:")
-    print(model.fit().forecast(steps = 1))
-    print("\n")
-    outputlist.append(model.fit().forecast(steps = 1))
-    groupCounter += 1
+    # outputlist.append(str(model.fit().forecast(steps = 1)).split(" "))
+    outputlist.loc[groupCounter] = [str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', '')]
 
-outputtable = pd.DataFrame(outputlist)
-print(outputtable)
-print(groupCounter)
+print(outputlist)
+# fix this ---------------
+    # issue is in getting unique forecasted values to see if there are duplicates, because now amount of forecasted values and
+    # amount of real values doesnt match
+# outputtable = pd.DataFrame(outputlist)
+# fix this ---------------
+
+# print(outputtable)
+# print(groupCounter)
