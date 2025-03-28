@@ -359,6 +359,11 @@ MigrationBackup/
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
 
+# outputs
+*.xlsx
+*.txt
+*.lnk  
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /ARIMA_Forecast/output.xlsx
+/ARIMA_Forecast/combinations_test.xlsx~Removed .xlsx from commiting and fixed something in code
