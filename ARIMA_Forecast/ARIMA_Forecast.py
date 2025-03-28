@@ -33,7 +33,7 @@ inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
 # print("2222222222222222222")
 inputTable = convert_to_datetime(inputTable)
 print(inputTable.dtypes)
-# print(inputTable.info())
+print(inputTable.info())
 
 # test transpositions
 
