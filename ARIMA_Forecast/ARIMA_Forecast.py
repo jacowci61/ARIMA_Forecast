@@ -29,11 +29,12 @@ inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
 
 # delete headers and transpose salesValues, then merge row by row in ONE LONG COLUMN
 salesValues = inputTable.drop(inputTable.columns[[0,1,-1]], axis = 1)
+#print(salesValues.columns[-1])
 salesValuesLIST =[]
 
 # salesValuesDF = pd.DataFrame(salesValuesLIST)
 #print(salesValuesDF.values.flatten())
-for i in range(3778): # add +1 to len(inputTable) range because index by default is 0?
+for i in range(salesValues.shape[0]): # add +1 to len(inputTable) range because index by default is 0?
     #print(salesValues.iloc[i].tolist())
     salesValuesLIST.extend(salesValues.iloc[i].tolist())
 with open("salesvalues.txt", "w") as output:
@@ -45,7 +46,8 @@ date_start = pd.to_datetime(dates[0], dayfirst=True)
 date_end = pd.to_datetime(dates[-1], dayfirst=True)
 
 # Generate a continuous date range
-daterng = pd.date_range(start="2023-06-01", end="2025-01-01", freq='MS')
+daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')
+# daterng = pd.date_range(start="2023-06-01", end="2025-01-01", freq='MS')
 
 # Convert date range to int64 timestamps
 date_range = pd.DataFrame({'Дата продаж': daterng})
