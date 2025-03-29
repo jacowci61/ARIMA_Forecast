@@ -31,8 +31,8 @@ inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
 salesValues = inputTable.drop(inputTable.columns[[0,1,-1]], axis = 1)
 salesValuesLIST =[]
 
-salesValuesDF = pd.DataFrame(salesValuesLIST)
-print(salesValuesDF.values.flatten())
+# salesValuesDF = pd.DataFrame(salesValuesLIST)
+#print(salesValuesDF.values.flatten())
 for i in range(3778): # add +1 to len(inputTable) range because index by default is 0?
     #print(salesValues.iloc[i].tolist())
     salesValuesLIST.extend(salesValues.iloc[i].tolist())
@@ -57,6 +57,7 @@ unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates()
     # Create all combinations using cross join
     # WORKS!-----------------------------------------------------------------------------------------------------------------------------------
 transposition1 = unique_pairs.merge(date_range, how="cross")
+transposition1 = pd.concat([transposition1, salesValuesDF], axis = 1)
 transposition1.to_excel("combinations_test.xlsx")
     # WORKS!------------------------------------------------------------
 #transposition1 = unique_pairs.merge(date_range, how="cross")
