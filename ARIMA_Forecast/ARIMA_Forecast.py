@@ -65,28 +65,34 @@ periodsAmount = 0
 groupCounter = -1
 
 for (region, product), group in grouped:
-    groupCounter += 1
     forecast_dataframe = group[['Дата Продажи','Кол-во продаж']].copy()
     forecast_dataframe['Дата Продажи'] = pd.to_datetime(forecast_dataframe['Дата Продажи'])
     forecast_dataframe.set_index('Дата Продажи', inplace = True)
-    
-
     originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
-    print(originalTS)
-    print(adfuller(originalTS))
-    # print(adfuller(originalTS)[4]['1%'])
-    if ((adfuller(originalTS)[1] > adfuller(originalTS)[4]['1%']) == True):
+    if (originalTS.eq(0).all() == True):
+        print(f"HIT! ------------------------------------")
+        continue
+    groupCounter += 1
+    periodsAmount = 0
+    isStationary = False
+    isStationaryAfterDifferentiating = False
+    # print(adfuller(originalTS))
+    if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate
         isStationary = True
     else:
         isStationary = False
         
     if (isStationary == False):
         while (isStationaryAfterDifferentiating == False):
-           periodsAmount += 1
-           if ((adfuller(originalTS.diff(periods = periodsAmount).dropna())[1] > adfuller(originalTS.diff(periods = periodsAmount).dropna())[4]['1%']) == True):
-               isStationaryAfterDifferentiating = True
-               print(f"Success on " + {periodsAmount} + " difference")
-               break
+            if (periodsAmount == 10):
+                print(f"Exceeded limit!")
+                break
+            else:
+                periodsAmount += 1
+                if ((adfuller(originalTS.diff(periods = periodsAmount).dropna())[0] < adfuller(originalTS.diff(periods = periodsAmount).dropna())[4]['1%']) == True):
+                    isStationaryAfterDifferentiating = True
+                    print(f"Success on {periodsAmount} difference")
+                    break
     # differencedTS = (originalTS).diff(periods = 1)
     # print(adfuller(differencedTS.dropna()))
     # print(adfuller(differencedTS.diff(periods = 2).dropna()))
@@ -101,9 +107,11 @@ for (region, product), group in grouped:
     # print(adfuller(differencedTS.diff(periods = 11).dropna()))
     # print(adfuller(differencedTS.diff(periods = 12).dropna()))
     # print(differencedTS.diff(periods = 12).dropna())
-    originalTS.plot(color = "red")
-    # differencedTS.dropna().plot(color = "blue")
-    pyplot.show()
+    
+    
+    #originalTS.plot(color = "red")
+    #differencedTS.dropna().plot(color = "blue")
+    #pyplot.show()
 
 
 
