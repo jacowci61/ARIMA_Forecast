@@ -2,8 +2,10 @@
 from collections import Counter
 from datetime import datetime
 from itertools import combinations
+from statsmodels.tsa.api import adfuller
 from statsmodels.tsa.vector_ar.vecm import forecast
 from pmdarima import auto_arima
+from matplotlib import pyplot
 import string
 import pandas as pd
 import numpy as np
@@ -54,29 +56,62 @@ def convert_to_datetime(df):
 final_df = pd.read_excel('src2.xlsx')
 # final_df = transposition1
 grouped = final_df.groupby(['Регион продаж', 'Продукция'])
-
 outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])
-
 daterng = pd.date_range(start='2023-06-01', end='2025-01-01', freq='MS')
 
+isStationary = bool
+isStationaryAfterDifferentiating = bool
+periodsAmount = 0
 groupCounter = -1
+
 for (region, product), group in grouped:
     groupCounter += 1
     forecast_dataframe = group[['Дата Продажи','Кол-во продаж']].copy()
     forecast_dataframe['Дата Продажи'] = pd.to_datetime(forecast_dataframe['Дата Продажи'])
     forecast_dataframe.set_index('Дата Продажи', inplace = True)
-    p,d,q = auto_arima(pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng), seasonal = False, trace = True, stepwise = True).order
+    
 
-    model = sm.tsa.arima.ARIMA(forecast_dataframe['Кол-во продаж'], order = (p,d,q))
+    originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
+    print(originalTS)
+    print(adfuller(originalTS))
+    # print(adfuller(originalTS)[4]['1%'])
+    if ((adfuller(originalTS)[1] > adfuller(originalTS)[4]['1%']) == True):
+        isStationary = True
+    else:
+        isStationary = False
+        
+    if (isStationary == False):
+        while (isStationaryAfterDifferentiating == False):
+           periodsAmount += 1
+           if ((adfuller(originalTS.diff(periods = periodsAmount).dropna())[1] > adfuller(originalTS.diff(periods = periodsAmount).dropna())[4]['1%']) == True):
+               isStationaryAfterDifferentiating = True
+               print(f"Success on " + {periodsAmount} + " difference")
+               break
+    # differencedTS = (originalTS).diff(periods = 1)
+    # print(adfuller(differencedTS.dropna()))
+    # print(adfuller(differencedTS.diff(periods = 2).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 3).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 4).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 5).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 6).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 7).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 8).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 9).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 10).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 11).dropna()))
+    # print(adfuller(differencedTS.diff(periods = 12).dropna()))
+    # print(differencedTS.diff(periods = 12).dropna())
+    originalTS.plot(color = "red")
+    # differencedTS.dropna().plot(color = "blue")
+    pyplot.show()
+
+
+
+    # region Forecasting
+    #p,d,q = auto_arima(pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng), seasonal = False, trace = True, stepwise = True, max_p = 20, max_d = 20, max_q = 20, maxiter = 100).order
+    # model = sm.tsa.arima.ARIMA(forecast_dataframe['Кол-во продаж'], order = (p,d,q))
     # outputlist.append(str(model.fit().forecast(steps = 1)).split(" "))
     # print(str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', ''))
-    outputlist.loc[groupCounter] = [str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', '')]
-outputlist.to_excel("output.xlsx")
-# fix this ---------------
-    # issue is in getting unique forecasted values to see if there are duplicates, because now amount of forecasted values and
-    # amount of real values doesnt match
-# outputtable = pd.DataFrame(outputlist)
-# fix this ---------------
-# print(outputtable)
-# print(groupCounter)
+    #outputlist.loc[groupCounter] = [str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', '')]
+#outputlist.to_excel("output.xlsx")
 # endregion
