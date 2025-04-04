@@ -28,36 +28,36 @@ def convert_to_datetime(df):
     return df
 
 # region readingTable
-# inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
-# salesValues = inputTable.drop(inputTable.columns[[0,1,-1]], axis = 1)
-# salesValuesLIST =[]
+inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
+salesValues = inputTable.drop(inputTable.columns[[0,1,-1,-2]], axis = 1)
+salesValuesLIST =[]
 
-# for i in range(salesValues.shape[0]):
-#     salesValuesLIST.extend(salesValues.iloc[i].tolist())
-# salesValuesDF = pd.DataFrame({'Кол-во продаж' : salesValuesLIST})
+for i in range(salesValues.shape[0]):
+    salesValuesLIST.extend(salesValues.iloc[i].tolist())
+salesValuesDF = pd.DataFrame({'Кол-во продаж' : salesValuesLIST})
 
-# dates = inputTable.columns[2:]
-# date_start = pd.to_datetime(dates[0], dayfirst=True)
-# date_end = pd.to_datetime(dates[-1], dayfirst=True)
+dates = inputTable.columns[2:]
+date_start = pd.to_datetime(dates[0], dayfirst=True)
+date_end = pd.to_datetime(dates[-1], dayfirst=True)
 
-# daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')
+daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')
 
-# date_range = pd.DataFrame({'Дата Продажи': daterng})
+date_range = pd.DataFrame({'Дата Продажи': daterng})
 
-# # Extract unique region-product pairs
-# unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates()
+# Extract unique region-product pairs
+unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates()
 
-# transposition1 = unique_pairs.merge(date_range, how="cross")
-# transposition1 = pd.concat([transposition1, salesValuesDF], axis = 1)
+transposition1 = unique_pairs.merge(date_range, how="cross")
+transposition1 = pd.concat([transposition1, salesValuesDF], axis = 1)
 # transposition1.to_excel("combinations_test.xlsx")
 # endregion
 
 # region forecast
-final_df = pd.read_excel('src2.xlsx')
-# final_df = transposition1
+# final_df = pd.read_excel('src2.xlsx')
+final_df = transposition1
 grouped = final_df.groupby(['Регион продаж', 'Продукция'])
 outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])
-daterng = pd.date_range(start='2023-06-01', end='2025-01-01', freq='MS')
+daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')
 
 isStationary = bool
 isStationaryAfterDifferentiating = bool
@@ -65,50 +65,56 @@ periodsAmount = 0
 groupCounter = -1
 
 for (region, product), group in grouped:
-    forecast_dataframe = group[['Дата Продажи','Кол-во продаж']].copy()
-    forecast_dataframe['Дата Продажи'] = pd.to_datetime(forecast_dataframe['Дата Продажи'])
-    forecast_dataframe.set_index('Дата Продажи', inplace = True)
-    originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
-    if (originalTS.eq(0).all() == True):
-        print(f"HIT! ------------------------------------")
-        continue
     groupCounter += 1
     periodsAmount = 0
     isStationary = False
     isStationaryAfterDifferentiating = False
-    # print(adfuller(originalTS))
+    forecast_dataframe = group[['Дата Продажи','Кол-во продаж']].copy()
+    forecast_dataframe['Дата Продажи'] = pd.to_datetime(forecast_dataframe['Дата Продажи'])
+    forecast_dataframe.set_index('Дата Продажи', inplace = True)
+    originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
+
+    if (originalTS.eq(0).all() == True):
+        model = sm.tsa.arima.ARIMA(originalTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
+        fittedModel = model.fit()
+        forecastValue = fittedModel.forecast(steps=1).iloc[0]
+        forecastDate = fittedModel.forecast(steps=1).index[0]
+        outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
+        continue
+
     if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate
         isStationary = True
+        model = sm.tsa.arima.ARIMA(originalTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
+        fittedModel = model.fit()
+        forecastValue = fittedModel.forecast(steps=1).iloc[0]
+        forecastDate = fittedModel.forecast(steps=1).index[0]
+        outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
     else:
         isStationary = False
         
     if (isStationary == False):
         while (isStationaryAfterDifferentiating == False):
             if (periodsAmount == 10):
-                print(f"Exceeded limit!")
+                model = sm.tsa.arima.ARIMA(originalTS.diff(periods = periodsAmount).dropna().to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
+                fittedModel = model.fit()
+                forecastValue = fittedModel.forecast(steps=1).iloc[0]
+                forecastDate = fittedModel.forecast(steps=1).index[0]
+                outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
                 break
             else:
                 periodsAmount += 1
                 if ((adfuller(originalTS.diff(periods = periodsAmount).dropna())[0] < adfuller(originalTS.diff(periods = periodsAmount).dropna())[4]['1%']) == True):
                     isStationaryAfterDifferentiating = True
-                    print(f"Success on {periodsAmount} difference")
+                    model = sm.tsa.arima.ARIMA(originalTS.diff(periods = periodsAmount).dropna().to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
+                    fittedModel = model.fit()
+                    forecastValue = fittedModel.forecast(steps=1).iloc[0]
+                    forecastDate = fittedModel.forecast(steps=1).index[0]
+                    outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
                     break
-    # differencedTS = (originalTS).diff(periods = 1)
-    # print(adfuller(differencedTS.dropna()))
-    # print(adfuller(differencedTS.diff(periods = 2).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 3).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 4).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 5).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 6).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 7).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 8).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 9).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 10).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 11).dropna()))
-    # print(adfuller(differencedTS.diff(periods = 12).dropna()))
-    # print(differencedTS.diff(periods = 12).dropna())
-    
-    
+
+outputlist.to_excel("output.xlsx")
+# endregion
+
     #originalTS.plot(color = "red")
     #differencedTS.dropna().plot(color = "blue")
     #pyplot.show()
