@@ -106,17 +106,25 @@ for (region, product), group in grouped:
     for p in range(0,maxP):
         for q in range(0, maxQ):
             if (q != 0):
-                fittedModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q)).fit()
+                fittedModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
+                fittedModelQ1.initialize_approximate_diffuse()
+                fittedModelQ = fittedModelQ1.fit()
                 if (fittedModelQ.aic < bestModelQ.aic):
                     bestModelQ = fittedModelQ
             else:
                 if (maxQ >= 2):
                     model3 = sm.tsa.arima.ARIMA # buffer for best model if Q >=2. Not the case for current range, but it should be dynamic anyway
-                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q)).fit()
+                    bestModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
+                    bestModelQ1.initialize_approximate_diffuse()
+                    bestModelQ = bestModelQ1.fit()
                 else:
-                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q)).fit()
+                    bestModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
+                    bestModelQ1.initialize_approximate_diffuse()
+                    bestModelQ = bestModelQ1.fit()
         if (p != 0):
-          fittedModelP = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,bestModelQ.model_orders['ma'])).fit()
+          fittedModelP1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,bestModelQ.model_orders['ma']))
+          fittedModelP1.initialize_approximate_diffuse()
+          fittedModelP = fittedModelP1.fit()
           if (fittedModelP.aic < bestModelP.aic):
                 bestModelP = fittedModelP
         else:
