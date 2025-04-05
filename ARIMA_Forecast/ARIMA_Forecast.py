@@ -2,6 +2,7 @@
 from collections import Counter
 from datetime import datetime
 from itertools import combinations
+from _pytest.pathlib import bestrelpath
 from statsmodels.tsa.api import adfuller
 from statsmodels.tsa.vector_ar.vecm import forecast
 from pmdarima import auto_arima
@@ -67,51 +68,83 @@ groupCounter = -1
 for (region, product), group in grouped:
     groupCounter += 1
     periodsAmount = 0
+    currentP = 0
     isStationary = False
     isStationaryAfterDifferentiating = False
     forecast_dataframe = group[['Дата Продажи','Кол-во продаж']].copy()
     forecast_dataframe['Дата Продажи'] = pd.to_datetime(forecast_dataframe['Дата Продажи'])
     forecast_dataframe.set_index('Дата Продажи', inplace = True)
     originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
+    diffirentiatedTS = pd.Series
 
     if (originalTS.eq(0).all() == True):
-        model = sm.tsa.arima.ARIMA(originalTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
-        fittedModel = model.fit()
-        forecastValue = fittedModel.forecast(steps=1).iloc[0]
-        forecastDate = fittedModel.forecast(steps=1).index[0]
-        outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
+        diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
         continue
 
     if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate
         isStationary = True
-        model = sm.tsa.arima.ARIMA(originalTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
-        fittedModel = model.fit()
-        forecastValue = fittedModel.forecast(steps=1).iloc[0]
-        forecastDate = fittedModel.forecast(steps=1).index[0]
-        outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
+        diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
     else:
         isStationary = False
         
     if (isStationary == False):
         while (isStationaryAfterDifferentiating == False):
-            if (periodsAmount == 10):
-                model = sm.tsa.arima.ARIMA(originalTS.diff(periods = periodsAmount).dropna().to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
-                fittedModel = model.fit()
-                forecastValue = fittedModel.forecast(steps=1).iloc[0]
-                forecastDate = fittedModel.forecast(steps=1).index[0]
-                outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
+            if (periodsAmount == 13):
+                diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
                 break
             else:
                 periodsAmount += 1
                 if ((adfuller(originalTS.diff(periods = periodsAmount).dropna())[0] < adfuller(originalTS.diff(periods = periodsAmount).dropna())[4]['1%']) == True):
                     isStationaryAfterDifferentiating = True
-                    model = sm.tsa.arima.ARIMA(originalTS.diff(periods = periodsAmount).dropna().to_frame(name = 'Кол-во продаж')['Кол-во продаж'])
-                    fittedModel = model.fit()
-                    forecastValue = fittedModel.forecast(steps=1).iloc[0]
-                    forecastDate = fittedModel.forecast(steps=1).index[0]
-                    outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
+                    diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
                     break
 
+
+
+
+# ---------------------------------------------------------
+    # add manual P parameter search as i did with D, see
+    # https://chatgpt.com/c/67d15a7b-3a0c-800d-ad16-fbe2550865c5
+    # should do the same thing for Q
+    # adding final value into list->dataframe->excel should do in the end of the for loop, see [[place]]
+
+
+
+    maxP = len(diffirentiatedTS-1)
+    maxQ = round(len(diffirentiatedTS) / 10)
+    best_P_Q = []
+
+    for p in range(0,maxP):
+        for q in range(0, maxQ):
+            if (q != 0):
+                fittedModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,q)).fit()
+                if (fittedModelQ.aic() < bestModelQ.aic()):
+                    bestModelQ = fittedModelQ
+            else:
+                if (maxQ >= 2):
+                    model3 = sm.tsa.arima.ARIMA # buffer for best model if Q >=2. Not the case for current range, but it should be dynamic anyway
+                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,q)).fit()
+                else:
+                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,q)).fit()
+        if (p != 0):
+          fittedModelP = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,bestModelQ.model_orders['ma'])).fit()
+          if (fittedModelP.aic() < bestModelP.aic()):
+                bestModelP = fittedModelP
+        else:
+          bestModelP = bestModelQ
+
+
+
+
+
+
+
+
+    # ---------------------------------------------------------
+
+
+
+    # [[place]]
 outputlist.to_excel("output.xlsx")
 # endregion
 
