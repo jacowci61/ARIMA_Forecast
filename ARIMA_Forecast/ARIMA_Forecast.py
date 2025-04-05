@@ -99,17 +99,6 @@ for (region, product), group in grouped:
                     diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
                     break
 
-
-
-
-# ---------------------------------------------------------
-    # add manual P parameter search as i did with D, see
-    # https://chatgpt.com/c/67d15a7b-3a0c-800d-ad16-fbe2550865c5
-    # should do the same thing for Q
-    # adding final value into list->dataframe->excel should do in the end of the for loop, see [[place]]
-
-
-
     maxP = len(diffirentiatedTS-1)
     maxQ = round(len(diffirentiatedTS) / 10)
     best_P_Q = []
@@ -117,48 +106,24 @@ for (region, product), group in grouped:
     for p in range(0,maxP):
         for q in range(0, maxQ):
             if (q != 0):
-                fittedModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,q)).fit()
-                if (fittedModelQ.aic() < bestModelQ.aic()):
+                fittedModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q)).fit()
+                if (fittedModelQ.aic < bestModelQ.aic):
                     bestModelQ = fittedModelQ
             else:
                 if (maxQ >= 2):
                     model3 = sm.tsa.arima.ARIMA # buffer for best model if Q >=2. Not the case for current range, but it should be dynamic anyway
-                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,q)).fit()
+                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q)).fit()
                 else:
-                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,q)).fit()
+                    bestModelQ = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q)).fit()
         if (p != 0):
-          fittedModelP = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж'['Кол-во продаж']), order = (p,0,bestModelQ.model_orders['ma'])).fit()
-          if (fittedModelP.aic() < bestModelP.aic()):
+          fittedModelP = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,bestModelQ.model_orders['ma'])).fit()
+          if (fittedModelP.aic < bestModelP.aic):
                 bestModelP = fittedModelP
         else:
           bestModelP = bestModelQ
 
-
-
-
-
-
-
-
-    # ---------------------------------------------------------
-
-
-
-    # [[place]]
+    forecastValue = bestModelP.forecast(steps=1).iloc[0]
+    forecastDate = bestModelP.forecast(steps=1).index[0]
+    outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
 outputlist.to_excel("output.xlsx")
-# endregion
-
-    #originalTS.plot(color = "red")
-    #differencedTS.dropna().plot(color = "blue")
-    #pyplot.show()
-
-
-
-    # region Forecasting
-    #p,d,q = auto_arima(pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng), seasonal = False, trace = True, stepwise = True, max_p = 20, max_d = 20, max_q = 20, maxiter = 100).order
-    # model = sm.tsa.arima.ARIMA(forecast_dataframe['Кол-во продаж'], order = (p,d,q))
-    # outputlist.append(str(model.fit().forecast(steps = 1)).split(" "))
-    # print(str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', ''))
-    #outputlist.loc[groupCounter] = [str(region), str(product), str(model.fit().forecast(steps = 1)).split(" ")[0], str(model.fit().forecast(steps = 1)).split(" ")[4].replace('\nFreq:', '')]
-#outputlist.to_excel("output.xlsx")
 # endregion
