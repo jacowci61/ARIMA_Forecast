@@ -30,6 +30,7 @@ def convert_to_datetime(df):
 
 # region readingTable
 inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
+# inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src3_LowLoad.xlsx')
 salesValues = inputTable.drop(inputTable.columns[[0,1,-1,-2]], axis = 1)
 salesValuesLIST =[]
 
@@ -60,6 +61,8 @@ grouped = final_df.groupby(['Регион продаж', 'Продукция'])
 outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])
 daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')
 
+print(len(grouped))
+
 isStationary = bool
 isStationaryAfterDifferentiating = bool
 periodsAmount = 0
@@ -77,31 +80,60 @@ for (region, product), group in grouped:
     originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
     diffirentiatedTS = pd.Series
 
-    if (originalTS.eq(0).all() == True):
-        diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
-        continue
+    # ------------------
+    diffirentiatedTS = originalTS
+    # ------------------
 
-    if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate
-        isStationary = True
-        diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
-    else:
-        isStationary = False
+
+    # print(originalTS)
+
+    # if (originalTS.eq(0).all() == True):
+    #     diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
+    #     continue
+
+    # if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate
+    #     isStationary = True
+    #     diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
+    # else:
+    #     isStationary = False
         
-    if (isStationary == False):
-        while (isStationaryAfterDifferentiating == False):
-            if (periodsAmount == 13):
-                diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
-                break
-            else:
-                periodsAmount += 1
-                if ((adfuller(originalTS.diff(periods = periodsAmount).dropna())[0] < adfuller(originalTS.diff(periods = periodsAmount).dropna())[4]['1%']) == True):
-                    isStationaryAfterDifferentiating = True
-                    diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
-                    break
+    # if (isStationary == False):
+    #     while (isStationaryAfterDifferentiating == False):
+    #         if (periodsAmount == 13):
+    #             diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
+    #             break
+    #         else:
+    #             periodsAmount += 1
+    #             try:
+    #                 differenced = originalTS.diff(periods=periodsAmount).dropna()
+    #                 # Check if the differenced series is constant
+    #                 if differenced.nunique() <= 1:
+    #                     # Skip this iteration if differenced series is constant
+    #                     continue
+                    
+    #                 adf_result = adfuller(differenced)
+    #                 if adf_result[0] < adf_result[4]['1%']:
+    #                     isStationaryAfterDifferentiating = True
+    #                     diffirentiatedTS = differenced
+    #                     break
+    #             except ValueError as e:
+    #                 # Log error and continue with next period
+    #                 print(f"Error with period {periodsAmount} for {region}-{product}: {e}")
+    #                 continue
 
     maxP = len(diffirentiatedTS-1)
     maxQ = round(len(diffirentiatedTS) / 10)
     best_P_Q = []
+
+    print()
+    print()
+    print()
+
+    print(groupCounter)
+
+    print()
+    print()
+    print()
 
     for p in range(0,maxP):
         for q in range(0, maxQ):
