@@ -11,53 +11,61 @@ import string
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
-# from statsmodels.tsa.arima.model import ARIMA
 
 
 def convert_to_datetime(df):
-    for col in df.columns[2:]:  # Skip first two columns
+    for col in df.columns[2:]:  # пропускает первые два столбца (регион, название продукции), т.к они не являются датой
         try:
-            # If column is string representation of date in column name
-            if isinstance(col, str):
+            if isinstance(col, str):  # если тип данных в столбце с датой является string
                 df[col] = pd.to_datetime(col)
             
-            # If column contains numeric values
-            elif df[col].dtype in ['int64', 'float64']:
+            elif df[col].dtype in ['int64', 'float64']:  # если тип данных в столбце с датой является int/float/любым типом данных который является числом
                 df[col] = pd.to_datetime(df[col], unit='D')  # Assumes days since epoch
         except Exception as e:
             print(f"Conversion error for column {col}: {e}")
     return df
 
 # region readingTable
+# отвечает за получение данных с таблицы
+
+
+# считывание файла можно сделать двумя путями:
+# если файл НЕ находится в одной папке с файлом программы (.py), можно использовать абсолютный путь: inputTable = pd.read_excel('D:...\названиеПапки\названиеФайла.xlsx')
+# если файл находится в одной папке с файлом программы (.py): inputTable = pd.read_excel('D:...\названиеПапки\названиеФайла.xlsx')
 inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
-# inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src3_LowLoad.xlsx')
+
+
 salesValues = inputTable.drop(inputTable.columns[[0,1,-1,-2]], axis = 1)
+# аргумент внутри метода .drop указывает на саму таблицу (inputTable) и индексы столбцов (inputTable.columns[[]]) которые будут удалены.
+# цифры внутри .columns[[]] перечисляют индексы столбцов которые будут удалены. [[...,-1,-2]] удаляют столбцы с конца таблицы
 salesValuesLIST =[]
 
-for i in range(salesValues.shape[0]):
+for i in range(salesValues.shape[0]): # получение значений продаж
     salesValuesLIST.extend(salesValues.iloc[i].tolist())
 salesValuesDF = pd.DataFrame({'Кол-во продаж' : salesValuesLIST})
 
-dates = inputTable.columns[2:]
+dates = inputTable.columns[2:] # считывание диапазона дат со всех столбцов, кроме первых двух
 date_start = pd.to_datetime(dates[0], dayfirst=True)
-date_end = pd.to_datetime(dates[-1], dayfirst=True)
+date_end = pd.to_datetime(dates[-1], dayfirst=True) # dates[-1] получает последний элемент с массива всех дат
 
 daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')
 
 date_range = pd.DataFrame({'Дата Продажи': daterng})
 
-# Extract unique region-product pairs
-unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates()
+unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates() # получение уникальных комбинаций 'Регион продаж' + 'Продукция'
 
+# следующие три строки отвечают за транспонирование для приведения таблицы из "wide" в "long" формат, который требуется для анализа временных рядов
 transposition1 = unique_pairs.merge(date_range, how="cross")
 transposition1 = pd.concat([transposition1, salesValuesDF], axis = 1)
-# transposition1.to_excel("combinations_test.xlsx")
+transposition1.to_excel("combinations_test.xlsx")
 # endregion
 
 # region forecast
-# final_df = pd.read_excel('src2.xlsx')
+# отвечает за сам процесс прогнозирования
+
+
 final_df = transposition1
-grouped = final_df.groupby(['Регион продаж', 'Продукция'])
+grouped = final_df.groupby(['Регион продаж', 'Продукция']) # создание групп 'Регион продаж' + 'Продукция'
 outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])
 daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')
 
@@ -83,8 +91,6 @@ for (region, product), group in grouped:
     # ------------------
     diffirentiatedTS = originalTS
     # ------------------
-
-
     # print(originalTS)
 
     # if (originalTS.eq(0).all() == True):
