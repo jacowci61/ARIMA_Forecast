@@ -20,7 +20,7 @@ def convert_to_datetime(df):
                 df[col] = pd.to_datetime(col)
             
             elif df[col].dtype in ['int64', 'float64']:  # если тип данных в столбце с датой является int/float/любым типом данных который является числом
-                df[col] = pd.to_datetime(df[col], unit='D')  # Assumes days since epoch
+                df[col] = pd.to_datetime(df[col], unit='D')  # assumes days since epoch
         except Exception as e:
             print(f"Conversion error for column {col}: {e}")
     return df
@@ -40,19 +40,19 @@ salesValues = inputTable.drop(inputTable.columns[[0,1,-1,-2]], axis = 1)
 # цифры внутри .columns[[]] перечисляют индексы столбцов которые будут удалены. [[...,-1,-2]] удаляют столбцы с конца таблицы
 salesValuesLIST =[]
 
-for i in range(salesValues.shape[0]): # получение значений продаж
+for i in range(salesValues.shape[0]):  # получение значений продаж
     salesValuesLIST.extend(salesValues.iloc[i].tolist())
 salesValuesDF = pd.DataFrame({'Кол-во продаж' : salesValuesLIST})
 
-dates = inputTable.columns[2:] # считывание диапазона дат со всех столбцов, кроме первых двух
+dates = inputTable.columns[2:]  # считывание диапазона дат со всех столбцов, кроме первых двух
 date_start = pd.to_datetime(dates[0], dayfirst=True)
-date_end = pd.to_datetime(dates[-1], dayfirst=True) # dates[-1] получает последний элемент с массива всех дат
+date_end = pd.to_datetime(dates[-1], dayfirst=True)  # dates[-1] получает последний элемент с массива всех дат
 
 daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')
 
 date_range = pd.DataFrame({'Дата Продажи': daterng})
 
-unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates() # получение уникальных комбинаций 'Регион продаж' + 'Продукция'
+unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates()  # получение уникальных комбинаций 'Регион продаж' + 'Продукция'
 
 # следующие три строки отвечают за транспонирование для приведения таблицы из "wide" в "long" формат, который требуется для анализа временных рядов
 transposition1 = unique_pairs.merge(date_range, how="cross")
@@ -64,40 +64,46 @@ transposition1.to_excel("combinations_test.xlsx")
 # отвечает за сам процесс прогнозирования
 
 
-final_df = transposition1
-grouped = final_df.groupby(['Регион продаж', 'Продукция']) # создание групп 'Регион продаж' + 'Продукция'
-outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])
-daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')
+final_df = transposition1  # получение преобразованной таблицы
+grouped = final_df.groupby(['Регион продаж', 'Продукция'])  # выделение групп 'Регион продаж' + 'Продукция' из всей таблицы
+outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])  # заранее создается dataframe для записи спрогнозированных в цикле значений
+daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')  # диапазон дат. Здесь они вписаны вручную, но можно сделать динамическую обработку получая и форматируя inputTable.columns[2] и inputTable.columns[-1]
 
-print(len(grouped))
+print(len(grouped))  # вывод количества получившихся групп
 
-isStationary = bool
-isStationaryAfterDifferentiating = bool
-periodsAmount = 0
-groupCounter = -1
+
+# isStationary = bool                      # используется только в блоке диффиренциации
+# isStationaryAfterDifferentiating = bool  # используется только в блоке диффиренциации
+# periodsAmount = 0                        # используется только в блоке диффиренциации
+
+
+groupCounter = -1  # -1 т.к первая строка в цикле сразу прибавляет 1, и первая итерация будет записывать первое спрогнозированное значение в outputlist корректно. Индекс первого элемента в массиве = 0, а не 1. Сама переменная имеет два предназначения: служит индексом по которому записывается спрогнозированное значение в выходной массив, а также позволяет отслеживать на какой группе в данный момент производится прогноз
 
 for (region, product), group in grouped:
     groupCounter += 1
-    periodsAmount = 0
-    currentP = 0
-    isStationary = False
-    isStationaryAfterDifferentiating = False
+
+
+    # periodsAmount = 0     # используется только в блоке диффиренциации. Каждый цикл степень диффиренциации сбрасывается до 0
+    # isStationary = False  # используется только в блоке диффиренциации. Заранее предполагает что ряд нестационарен, затем проводится тест ряда на стационарность. И если ряд сразу является стационарным, он не будет обрабатываться, а сразу перейдет в блок ARIMA
+    # isStationaryAfterDifferentiating = False  # используется только в блоке диффиренциации
+
+
     forecast_dataframe = group[['Дата Продажи','Кол-во продаж']].copy()
     forecast_dataframe['Дата Продажи'] = pd.to_datetime(forecast_dataframe['Дата Продажи'])
     forecast_dataframe.set_index('Дата Продажи', inplace = True)
-    originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)
+    originalTS =pd.Series(forecast_dataframe['Кол-во продаж'].tolist(), index = daterng)  # преобразование в тип pd.Series является необходимым условием для работы модели ARIMA
     diffirentiatedTS = pd.Series
+    diffirentiatedTS = originalTS  # используется всегда. В случае если блок диффиренциации активен, diffirentiatedTS будет перезаписан при необходимости
 
-    # ------------------
-    diffirentiatedTS = originalTS
-    # ------------------
-    # print(originalTS)
 
-    # if (originalTS.eq(0).all() == True):
+    # region Differencing
+    # блок диффиренцирования
+
+    # if (originalTS.eq(0).all() == True):  # если весь ряд значений состоит из нулей
     #     diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
     #     continue
 
-    # if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate
+    # if ((adfuller(originalTS)[0] < adfuller(originalTS)[4]['1%']) == True): # raises warning if not enough non-zeroes to calculate.  // adfuller(originalTS) возвращает массив значений. Здесь для проверки использовалось сравнение реального и критического значения. adfuller(originalTS)[0] возвращает реальное значение; adfuller(originalTS)[4]['1%']) возвращает критическое значение, ['1%'] необходим для обработки получаемого числа чтобы избежать ошибки
     #     isStationary = True
     #     diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
     # else:
@@ -105,16 +111,16 @@ for (region, product), group in grouped:
         
     # if (isStationary == False):
     #     while (isStationaryAfterDifferentiating == False):
-    #         if (periodsAmount == 13):
+    #         if (periodsAmount == 13):  # в скобках находится крайнее значение количества элементов, при достижении которого диффиренциация больше не будет проводится. Например, при группе с кол-вом значений в 20, я всегда оставлял не меньше 7 (20-13=7) элементов, на основе которых ARIMA прогнозировала значения
     #             diffirentiatedTS = originalTS.diff(periodsAmount).dropna()
     #             break
-    #         else:
+    #         else:  # пока не достигнуто крайнее значение количества элементов/ряд не стал стационарным (второй if в ветвлении try), процесс диффиренциации продолжается
     #             periodsAmount += 1
     #             try:
     #                 differenced = originalTS.diff(periods=periodsAmount).dropna()
-    #                 # Check if the differenced series is constant
+    #                 # check if the differenced series is constant
     #                 if differenced.nunique() <= 1:
-    #                     # Skip this iteration if differenced series is constant
+    #                     # skip this iteration if differenced series is constant
     #                     continue
                     
     #                 adf_result = adfuller(differenced)
@@ -123,19 +129,20 @@ for (region, product), group in grouped:
     #                     diffirentiatedTS = differenced
     #                     break
     #             except ValueError as e:
-    #                 # Log error and continue with next period
+    #                 # log error and continue with next period
     #                 print(f"Error with period {periodsAmount} for {region}-{product}: {e}")
     #                 continue
+    # endregion
 
-    maxP = len(diffirentiatedTS-1)
-    maxQ = round(len(diffirentiatedTS) / 10)
-    best_P_Q = []
 
+    maxP = len(diffirentiatedTS-1)  # максимальный порядок авторегресии (p)
+    maxQ = round(len(diffirentiatedTS) / 10)  # максимальное значение скользящего среднего (q); само максимальное значение находится по формуле описанной в строке
+
+    print() # служит как "/n", позволяет легче замечать текущую группу которая обрабатыватеся
     print()
     print()
-    print()
 
-    print(groupCounter)
+    print(groupCounter)  # показывает текущую группу которая обрабатыватеся
 
     print()
     print()
@@ -143,15 +150,15 @@ for (region, product), group in grouped:
 
     for p in range(0,maxP):
         for q in range(0, maxQ):
-            if (q != 0):
+            if (q != 0):  # если это не первая итерация цикла подбора q то выполнение переходит в блок if
                 fittedModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
-                fittedModelQ1.initialize_approximate_diffuse()
-                fittedModelQ = fittedModelQ1.fit()
-                if (fittedModelQ.aic < bestModelQ.aic):
+                fittedModelQ1.initialize_approximate_diffuse()  # .initialize_approximate_diffuse() поправляет возникающую ошибку
+                fittedModelQ = fittedModelQ1.fit()  # .fit() производит обучение модели на текущей группе значений
+                if (fittedModelQ.aic < bestModelQ.aic):  # определяет какая модель лучше в сравнении по тесту Акаике; если она лучше предыдущей, то bestModelQ перезаписывается
                     bestModelQ = fittedModelQ
             else:
-                if (maxQ >= 2):
-                    model3 = sm.tsa.arima.ARIMA # buffer for best model if Q >=2. Not the case for current range, but it should be dynamic anyway
+                if (maxQ >= 2):  # если в ряду/группе будет больше 20 значений, тогда Q будет больше одного
+                    model3 = sm.tsa.arima.ARIMA  # buffer for best model if Q >=2. Not the case for current range of values
                     bestModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
                     bestModelQ1.initialize_approximate_diffuse()
                     bestModelQ = bestModelQ1.fit()
@@ -159,17 +166,17 @@ for (region, product), group in grouped:
                     bestModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
                     bestModelQ1.initialize_approximate_diffuse()
                     bestModelQ = bestModelQ1.fit()
-        if (p != 0):
-          fittedModelP1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,bestModelQ.model_orders['ma']))
+        if (p != 0):  # если это не первая итерация цикла подбора p то выполнение переходит в блок if
+          fittedModelP1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,bestModelQ.model_orders['ma']))  # bestModelQ.model_orders['ma'] получает значение q
           fittedModelP1.initialize_approximate_diffuse()
           fittedModelP = fittedModelP1.fit()
-          if (fittedModelP.aic < bestModelP.aic):
+          if (fittedModelP.aic < bestModelP.aic):  # такой же принцип как и в цикле подбора q
                 bestModelP = fittedModelP
         else:
           bestModelP = bestModelQ
 
     forecastValue = bestModelP.forecast(steps=1).iloc[0]
     forecastDate = bestModelP.forecast(steps=1).index[0]
-    outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]
+    outputlist.loc[groupCounter] = [str(region), str(product), forecastDate, forecastValue]  # заполнение строки в выходной таблице
 outputlist.to_excel("output.xlsx")
 # endregion
