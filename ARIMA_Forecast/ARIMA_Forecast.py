@@ -32,7 +32,7 @@ def convert_to_datetime(df):
 # считывание файла можно сделать двумя путями:
 # если файл НЕ находится в одной папке с файлом программы (.py), можно использовать абсолютный путь: inputTable = pd.read_excel('D:...\названиеПапки\названиеФайла.xlsx')
 # если файл находится в одной папке с файлом программы (.py): inputTable = pd.read_excel('D:...\названиеПапки\названиеФайла.xlsx')
-inputTable = pd.read_excel('D:\PocoX3\Work\Involux\Прогнозирование\src.xlsx')
+inputTable = pd.read_excel('D:\Прогнозирование\src.xlsx')  # пример пути, всегда должен изменяться если файл НЕ находится в одной папке с файлом программы (.py). Путь к файлу можно получить через *ПКМ по файлу*->свойства->вкладка "безопасность"->первая строка "имя объекта"
 
 
 salesValues = inputTable.drop(inputTable.columns[[0,1,-1,-2]], axis = 1)
@@ -48,6 +48,7 @@ dates = inputTable.columns[2:]  # считывание диапазона дат со всех столбцов, кро
 date_start = pd.to_datetime(dates[0], dayfirst=True)
 date_end = pd.to_datetime(dates[-1], dayfirst=True)  # dates[-1] получает последний элемент с массива всех дат
 
+print(salesValues.columns[0])
 daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')
 
 date_range = pd.DataFrame({'Дата Продажи': daterng})
@@ -57,7 +58,6 @@ unique_pairs = inputTable[['Регион продаж', 'Продукция']].drop_duplicates()  # п
 # следующие три строки отвечают за транспонирование для приведения таблицы из "wide" в "long" формат, который требуется для анализа временных рядов
 transposition1 = unique_pairs.merge(date_range, how="cross")
 transposition1 = pd.concat([transposition1, salesValuesDF], axis = 1)
-transposition1.to_excel("combinations_test.xlsx")
 # endregion
 
 # region forecast
@@ -67,7 +67,8 @@ transposition1.to_excel("combinations_test.xlsx")
 final_df = transposition1  # получение преобразованной таблицы
 grouped = final_df.groupby(['Регион продаж', 'Продукция'])  # выделение групп 'Регион продаж' + 'Продукция' из всей таблицы
 outputlist = pd.DataFrame(columns = ['Регион продаж', 'Продукция', 'Дата Продажи', 'Кол-во продаж'])  # заранее создается dataframe для записи спрогнозированных в цикле значений
-daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')  # диапазон дат. Здесь они вписаны вручную, но можно сделать динамическую обработку получая и форматируя inputTable.columns[2] и inputTable.columns[-1]
+daterng = pd.date_range(start=salesValues.columns[0], end=salesValues.columns[-1], freq='MS')  # диапазон дат. Определяется динамически и работает на малой выборке из 10 элементов и не должен ломаться, но не проверял на 3777 элементах. Поэтому если возникнут ошибки, строка ниже со статичными датами которые вручную меняются в коде точно не ломалась при обработке 3777 элементах
+# daterng = pd.date_range(start='2023-06-01', end='2024-12-01', freq='MS')  # Здесь они вписаны вручную и проверены на 3777
 
 print(len(grouped))  # вывод количества получившихся групп
 
@@ -138,12 +139,10 @@ for (region, product), group in grouped:
     maxP = len(diffirentiatedTS-1)  # максимальный порядок авторегресии (p)
     maxQ = round(len(diffirentiatedTS) / 10)  # максимальное значение скользящего среднего (q); само максимальное значение находится по формуле описанной в строке
 
-    print() # служит как "/n", позволяет легче замечать текущую группу которая обрабатыватеся
+    print() # служит как "/n", позволяет легче замечать текущую группу которая обрабатыватеся в консоли вывода
     print()
     print()
-
     print(groupCounter)  # показывает текущую группу которая обрабатыватеся
-
     print()
     print()
     print()
@@ -157,8 +156,8 @@ for (region, product), group in grouped:
                 if (fittedModelQ.aic < bestModelQ.aic):  # определяет какая модель лучше в сравнении по тесту Акаике; если она лучше предыдущей, то bestModelQ перезаписывается
                     bestModelQ = fittedModelQ
             else:
-                if (maxQ >= 2):  # если в ряду/группе будет больше 20 значений, тогда Q будет больше одного
-                    model3 = sm.tsa.arima.ARIMA  # buffer for best model if Q >=2. Not the case for current range of values
+                if (maxQ >= 2):  # недописанное ветвление когда (Q >= 2), если в ряду/группе будет больше 20 значений
+                    model3 = sm.tsa.arima.ARIMA
                     bestModelQ1 = sm.tsa.arima.ARIMA(diffirentiatedTS.to_frame(name = 'Кол-во продаж')['Кол-во продаж'], order = (p,0,q))
                     bestModelQ1.initialize_approximate_diffuse()
                     bestModelQ = bestModelQ1.fit()
@@ -172,7 +171,7 @@ for (region, product), group in grouped:
           fittedModelP = fittedModelP1.fit()
           if (fittedModelP.aic < bestModelP.aic):  # такой же принцип как и в цикле подбора q
                 bestModelP = fittedModelP
-        else:
+        else:  # если это первая итерация, то p = 0, соответственно можно использовать bestModelQ
           bestModelP = bestModelQ
 
     forecastValue = bestModelP.forecast(steps=1).iloc[0]
