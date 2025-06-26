@@ -1,5 +1,5 @@
 # Theory behind the project
-Uses ARIMA model, processes data accordingly to Box-Jenkins methodology, except differencing of time series. It's bugged, works separately fine, but united with forecasting using ARIMA model itself it fails. So for now it's commented out
+Uses ARIMA model, processes data accordingly to Box-Jenkins methodology.
 # Input/Output explanations
 ## Input table looks like this:
 ![image](https://github.com/user-attachments/assets/fcc07f98-b8f9-4dd6-843a-f2a8c41ab4d2)
